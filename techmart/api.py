@@ -1,6 +1,27 @@
 from flask import jsonify, request, Blueprint
+from flask_login import login_required, login_user
 from . import db
-from .models import Product, Order, Review, Comment
+from .models import Product, Order, Review, Comment, User
+from functools import wraps
+
+def token_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 403
+        token = token.split(' ')[1] if len(token.split(' ')[1]) > 1 else None
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 403
+        
+        user = User.query.filter_by(session_token=token).first()
+        if not user:
+            return jsonify({'message': 'Invalid token'}), 403
+        login_user(user)
+        return f(*args, **kwargs)
+
+    return wrapper
+
 
 bp = Blueprint('api', __name__)
 
@@ -39,6 +60,8 @@ def get_product(product_id):
 
             
 @bp.route('/add_products', methods=['POST'])
+@token_required
+# @login_required  # only authenticated users can add products
 def add_products():
     user_input = request.get_json()
     
@@ -61,6 +84,8 @@ def add_products():
     return jsonify(new_post_info)
 
 @bp.route('/add_order', methods=['POST'])
+@token_required
+# @login_required  # only authenticated users can add orders
 def add_order():
     user_input = request.get_json()
     new_order = Order(
@@ -83,6 +108,8 @@ def add_order():
     return jsonify(new_order_info)
 
 @bp.route('/orders', methods=['GET'])
+@token_required
+# @login_required  # only authenticated users can view orders
 def get_orders():
     orders = Order.query.all()
     orders_list = []
@@ -100,6 +127,8 @@ def get_orders():
 
 
 @bp.route('/add_review', methods=['POST'])
+@token_required
+# @login_required  # only authenticated users can add reviews
 def add_review():
     user_input = request.get_json()
     new_review = Review(
@@ -137,6 +166,8 @@ def get_product_reviews(product_id):
     return jsonify(reviews_list)
 
 @bp.route('/add_comment', methods=['POST'])
+@token_required
+# @login_required  # only authenticated users can add comments
 def add_comment():
     user_input = request.get_json()
     new_comment = Comment(

@@ -1,5 +1,6 @@
 from . import db
 from flask_login import UserMixin
+import uuid
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -59,3 +60,4 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(100), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    session_token = db.Column(db.String(36), unique=True, nullable=True)
