@@ -1,3 +1,6 @@
+"use client";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -18,91 +21,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, PenIcon, Trash2Icon, EyeIcon } from "lucide-react";
-import { FilterForm } from "./filter-form";
 import Navbar from "@/components/ui/custom/navbar";
 
+const API_URI = `http://127.0.0.1:5000`;
+
 type Order = {
-  id: string;
-  customerName: string;
-  orderDate: string;
-  total: number;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  id: number;
+  customer_name: string;
+  customer_email: string;
+  product_id: number;
+  quantity: number;
+  status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
 };
-
-type FilterParams = {
-  status?: Order["status"];
-  startDate?: string;
-  endDate?: string;
-};
-
-async function getOrders(filters: FilterParams): Promise<Order[]> {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  const allOrders = [
-    {
-      id: "1",
-      customerName: "John Doe",
-      orderDate: "2023-04-01",
-      total: 99.99,
-      status: "shipped",
-    },
-    {
-      id: "2",
-      customerName: "Jane Smith",
-      orderDate: "2023-04-02",
-      total: 149.99,
-      status: "processing",
-    },
-    {
-      id: "3",
-      customerName: "Bob Johnson",
-      orderDate: "2023-04-03",
-      total: 199.99,
-      status: "delivered",
-    },
-    {
-      id: "4",
-      customerName: "Alice Brown",
-      orderDate: "2023-04-04",
-      total: 79.99,
-      status: "pending",
-    },
-    {
-      id: "5",
-      customerName: "Charlie Wilson",
-      orderDate: "2023-04-05",
-      total: 299.99,
-      status: "cancelled",
-    },
-  ] as Order[];
-
-  return allOrders.filter((order) => {
-    if (filters.status && order.status !== filters.status) return false;
-    if (
-      filters.startDate &&
-      new Date(order.orderDate) < new Date(filters.startDate)
-    )
-      return false;
-    if (
-      filters.endDate &&
-      new Date(order.orderDate) > new Date(filters.endDate)
-    )
-      return false;
-    return true;
-  });
-}
 
 function StatusBadge({ status }: { status: Order["status"] }) {
   const statusStyles = {
-    pending: "bg-yellow-100 text-yellow-800",
-    processing: "bg-blue-100 text-blue-800",
-    shipped: "bg-purple-100 text-purple-800",
-    delivered: "bg-green-100 text-green-800",
-    cancelled: "bg-red-100 text-red-800",
+    Pending: "bg-yellow-100 text-yellow-800 hover:text-white",
+    Processing: "bg-blue-100 text-blue-800 hover:text-white",
+    Shipped: "bg-purple-100 text-purple-800 hover:text-white",
+    Delivered: "bg-green-100 text-green-800 hover:text-white",
+    Cancelled: "bg-red-100 text-red-800 hover:text-white",
   };
 
   return (
-    <Badge className={`${statusStyles[status]} capitalize`}>{status}</Badge>
+    <Badge className={`${statusStyles[status]} capitalize cursor-pointer`}>
+      {status}
+    </Badge>
   );
 }
 
@@ -135,18 +79,39 @@ function OrderActions() {
   );
 }
 
-export default async function OrdersPage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
-  const filters: FilterParams = {
-    status: searchParams.status as Order["status"],
-    startDate: searchParams.startDate as string,
-    endDate: searchParams.endDate as string,
-  };
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const orders = await getOrders(filters);
+  // Fetch orders on mount
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await axios.get(`${API_URI}/orders`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("session_token")}`,
+          },
+        });
+        setOrders(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching orders:", err);
+        setError("Failed to load orders");
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>; // Loading state
+  }
+
+  if (error) {
+    return <div>{error}</div>; // Error state
+  }
 
   return (
     <>
@@ -159,15 +124,13 @@ export default async function OrdersPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <FilterForm initialFilters={filters} />
             <div className='overflow-x-auto mt-6'>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className='w-[100px]'>Order ID</TableHead>
                     <TableHead>Customer Name</TableHead>
-                    <TableHead>Order Date</TableHead>
-                    <TableHead>Total</TableHead>
+                    <TableHead>Quantity</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className='text-right'>Actions</TableHead>
                   </TableRow>
@@ -176,11 +139,8 @@ export default async function OrdersPage({
                   {orders.map((order) => (
                     <TableRow key={order.id} className='hover:bg-gray-50'>
                       <TableCell className='font-medium'>{order.id}</TableCell>
-                      <TableCell>{order.customerName}</TableCell>
-                      <TableCell>
-                        {new Date(order.orderDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>${order.total.toFixed(2)}</TableCell>
+                      <TableCell>{order.customer_name}</TableCell>
+                      <TableCell>{order.quantity}</TableCell>
                       <TableCell>
                         <StatusBadge status={order.status} />
                       </TableCell>

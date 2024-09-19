@@ -11,3 +11,12 @@ export interface User {
   id: number;
   username: string;
 }
+
+export interface Order {
+  customer_email: string;
+  customer_name: string;
+  id: number;
+  product_id: number;
+  quantity: Number;
+  status: string;
+}

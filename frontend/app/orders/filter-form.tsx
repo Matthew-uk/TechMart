@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 
 type FilterParams = {
-  status?: string;
+  status?: string | null;
   startDate?: string;
   endDate?: string;
 };
@@ -29,7 +29,10 @@ export function FilterForm({
   const [isPending, startTransition] = useTransition();
   const [filters, setFilters] = useState<FilterParams>(initialFilters);
 
-  const handleFilterChange = (key: keyof FilterParams, value: string) => {
+  const handleFilterChange = (
+    key: keyof FilterParams,
+    value: string | null,
+  ) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -37,7 +40,13 @@ export function FilterForm({
     e.preventDefault();
     const searchParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) searchParams.append(key, value);
+      // If status is 'all', don't append it to the query params
+      if (key === "status" && value === "all") {
+        return;
+      }
+      if (value) {
+        searchParams.append(key, value);
+      }
     });
     startTransition(() => {
       router.push(`${pathname}?${searchParams.toString()}`);
@@ -50,13 +59,16 @@ export function FilterForm({
         <div className='flex-1 min-w-[200px]'>
           <Label htmlFor='status'>Status</Label>
           <Select
-            value={filters.status || ""}
-            onValueChange={(value) => handleFilterChange("status", value)}>
+            value={filters.status || "all"} // Set "all" as default if status is null
+            onValueChange={(value) =>
+              handleFilterChange("status", value === "all" ? null : value)
+            }>
             <SelectTrigger id='status'>
               <SelectValue placeholder='Select status' />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value=''>All</SelectItem>
+              <SelectItem value='all'>All</SelectItem>{" "}
+              {/* "all" as the default option */}
               <SelectItem value='pending'>Pending</SelectItem>
               <SelectItem value='processing'>Processing</SelectItem>
               <SelectItem value='shipped'>Shipped</SelectItem>
